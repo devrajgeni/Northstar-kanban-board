@@ -212,6 +212,22 @@ describe("Notifications panel", () => {
   });
 });
 
+describe("Sidebar about and contact actions", () => {
+  test("clicking About opens the Northstar info modal", () => {
+    render(<Page />);
+    fireEvent.click(screen.getByRole("button", { name: /^About$/i }));
+    expect(screen.getByText("About Northstar")).toBeInTheDocument();
+    expect(screen.getByText(/keeps teams aligned on projects, tasks, and people/i)).toBeInTheDocument();
+  });
+
+  test("clicking Contact us opens contact details", () => {
+    render(<Page />);
+    fireEvent.click(screen.getByRole("button", { name: /^Contact us$/i }));
+    expect(screen.getByText("Get in touch")).toBeInTheDocument();
+    expect(screen.getByText(/support@northstar\.app/i)).toBeInTheDocument();
+  });
+});
+
 describe("View switching (Board/List/Timeline)", () => {
   test("switching to List view shows placeholder empty view (edge case: unimplemented view)", () => {
     render(<Page />);
