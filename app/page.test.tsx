@@ -7,7 +7,7 @@ import Page from "./page";
 describe("Home page - initial render", () => {
   test("renders default team, project, and board view", () => {
     render(<Page />);
-    expect(screen.getByText("Product team")).toBeInTheDocument();
+    expect(screen.getByText("Product team", { selector: "small" })).toBeInTheDocument();
     expect(screen.getByText("Website refresh", { selector: "strong" })).toBeInTheDocument();
     expect(screen.getByText("Backlog")).toBeInTheDocument();
     expect(screen.getByText("In progress")).toBeInTheDocument();
@@ -33,8 +33,8 @@ describe("Navigation between sections", () => {
   test("switches to People section and lists team members", () => {
     render(<Page />);
     fireEvent.click(screen.getByRole("button", { name: /^People$/i }));
-    expect(screen.getByText("Mina Patel")).toBeInTheDocument();
-    expect(screen.getByText("Owen Brooks")).toBeInTheDocument();
+    expect(screen.getByText("Mina Patel", { selector: "h3" })).toBeInTheDocument();
+    expect(screen.getByText("Owen Brooks", { selector: "h3" })).toBeInTheDocument();
   });
 
   test("switches back to Projects section from Inbox", () => {
@@ -140,7 +140,7 @@ describe("Team creation modal", () => {
     fireEvent.change(screen.getByPlaceholderText(/Campaign site/i), { target: { value: "Landing page, Style guide" } });
     fireEvent.change(screen.getByPlaceholderText(/Alex Chen/i), { target: { value: "Sam Lee" } });
     fireEvent.click(screen.getByText("Create team"));
-    expect(screen.getByText("Design team")).toBeInTheDocument();
+    expect(screen.getByText("Design team", { selector: "small" })).toBeInTheDocument();
     expect(screen.getByText("Landing page", { selector: "strong" })).toBeInTheDocument();
   });
 
@@ -185,14 +185,14 @@ describe("Person profile modal", () => {
     render(<Page />);
     fireEvent.click(screen.getByRole("button", { name: /^People$/i }));
     fireEvent.click(screen.getAllByText("View profile")[0]);
-    expect(screen.getByText("Product lead")).toBeInTheDocument();
+    expect(screen.getByText("Product lead", { selector: "strong" })).toBeInTheDocument();
   });
 
   test("closing profile modal removes it from the DOM", () => {
     render(<Page />);
     fireEvent.click(screen.getByRole("button", { name: /^People$/i }));
     fireEvent.click(screen.getAllByText("View profile")[0]);
-    fireEvent.click(screen.getByRole("button", { name: /Close/i }));
+    fireEvent.click(screen.getAllByRole("button", { name: /Close/i })[0]);
     expect(screen.queryByText("TEAM MEMBER")).not.toBeInTheDocument();
   });
 });

@@ -235,7 +235,7 @@ export default function Home() {
       <aside className="sidebar">
         <div className="brand"><div className="brand-mark"><Sparkles size={17} /></div><span>northstar</span></div>
         <div className="workspace-select-wrap">
-          <div className="workspace-select" onClick={() => setShowWorkspaceMenu((c) => !c)}><div className="workspace-avatar">{activeTeam.name[0]}</div><div><strong>Northstar</strong><small>{activeTeam.name}</small></div><ChevronDown size={15} /></div>
+          <button type="button" className="workspace-select" onClick={() => setShowWorkspaceMenu((c) => !c)}><div className="workspace-avatar">{activeTeam.name[0]}</div><div><strong>Northstar</strong><small>{activeTeam.name}</small></div><ChevronDown size={15} /></button>
           {showWorkspaceMenu && <>
             <div className="ws-backdrop" onClick={() => setShowWorkspaceMenu(false)} />
             <div className="ws-panel">
