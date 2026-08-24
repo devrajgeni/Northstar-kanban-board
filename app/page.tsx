@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Archive,
   ArrowDownUp,
@@ -113,6 +113,41 @@ export default function Home() {
   const [newTeamName, setNewTeamName] = useState("");
   const [newTeamProjects, setNewTeamProjects] = useState("");
   const [newTeamPeople, setNewTeamPeople] = useState("");
+  const [infoModal, setInfoModal] = useState<"about" | "contact" | null>(null);
+  const infoModalRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!infoModal || !infoModalRef.current) return;
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const dialog = infoModalRef.current;
+    const focusableSelector = "button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])";
+    const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(focusableSelector));
+    const firstFocusable = focusable[0] ?? dialog;
+    const lastFocusable = focusable[focusable.length - 1] ?? dialog;
+    firstFocusable.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setInfoModal(null);
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+      if (event.shiftKey && document.activeElement === firstFocusable) {
+        event.preventDefault();
+        lastFocusable.focus();
+      } else if (!event.shiftKey && document.activeElement === lastFocusable) {
+        event.preventDefault();
+        firstFocusable.focus();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      previouslyFocused?.focus();
+    };
+  }, [infoModal]);
 
   const filteredTasks = useMemo(() => tasks.filter((task) => {
     const text = `${task.title} ${task.description} ${task.labels.join(" ")}`.toLowerCase();
@@ -234,10 +269,10 @@ export default function Home() {
       <aside className="sidebar">
         <div className="brand"><div className="brand-mark"><Sparkles size={17} /></div><span>northstar</span></div>
         <div className="workspace-select-wrap">
-          <div className="workspace-select" onClick={() => setShowWorkspaceMenu((c) => !c)}><div className="workspace-avatar">{activeTeam.name[0]}</div><div><strong>Northstar</strong><small>{activeTeam.name}</small></div><ChevronDown size={15} /></div>
+          <button type="button" className="workspace-select" aria-expanded={showWorkspaceMenu} aria-controls="workspace-panel" onClick={() => setShowWorkspaceMenu((c) => !c)}><span className="workspace-avatar">{activeTeam.name[0]}</span><span className="workspace-meta"><strong>Northstar</strong><small>{activeTeam.name}</small></span><ChevronDown size={15} /></button>
           {showWorkspaceMenu && <>
             <div className="ws-backdrop" onClick={() => setShowWorkspaceMenu(false)} />
-            <div className="ws-panel">
+            <div className="ws-panel" id="workspace-panel">
               <div className="ws-panel-heading">
                 <h4>Teams</h4>
                 <button onClick={() => { setShowNewTeamModal(true); setShowWorkspaceMenu(false); }}><Plus size={14} /> New team</button>
@@ -276,7 +311,7 @@ export default function Home() {
         </nav>
         <div className="nav-label">Your projects <button aria-label="Add project" onClick={addProject}><Plus size={15} /></button></div>
         <nav className="project-nav">{activeTeam.projects.map((project) => editingProject === project ? <input key={project} autoFocus className="project-rename-input" value={editingValue} onChange={(event) => setEditingValue(event.target.value)} onBlur={commitRenameProject} onKeyDown={(event) => { if (event.key === "Enter") commitRenameProject(); if (event.key === "Escape") setEditingProject(null); }} /> : <button key={project} className={selectedProject === project ? "project-active" : ""} onClick={() => { setSelectedProject(project); setActiveSection("projects"); }} onDoubleClick={(event) => startRenameProject(project, event)}><span className={`project-dot ${activeTeam.projectDetails[project]?.color ?? "blue"}`} />{project}{project === "Mobile app" && <span className="project-count">8</span>}{project === "Website refresh" && <MoreHorizontal size={15} />}</button>)}</nav>
-        <div className="sidebar-footer"><button><CircleHelp size={17} /> Help & support</button><button><Settings2 size={17} /> Workspace settings</button><div className="profile"><div className="avatar avatar-coral">MP</div><div><strong>Mina Patel</strong><small>Admin</small></div><MoreHorizontal size={16} /></div></div>
+        <div className="sidebar-footer"><button onClick={() => setInfoModal("about")}><CircleHelp size={17} /> About</button><button onClick={() => setInfoModal("contact")}><Inbox size={17} /> Contact us</button><button><Settings2 size={17} /> Workspace settings</button><div className="profile"><div className="avatar avatar-coral">MP</div><div><strong>Mina Patel</strong><small>Admin</small></div><MoreHorizontal size={16} /></div></div>
       </aside>
 
       <section className="workspace">
@@ -295,6 +330,8 @@ export default function Home() {
       {showModal && <div className="modal-backdrop" onMouseDown={() => setShowModal(false)}><div className="modal" onMouseDown={(event) => event.stopPropagation()}><div className="modal-header"><div><span className="eyebrow">NEW TASK</span><h2>Add to the project</h2></div><button className="close-button" onClick={() => setShowModal(false)} aria-label="Close"><X size={18} /></button></div><label>Task name<input autoFocus value={newTitle} onChange={(event) => setNewTitle(event.target.value)} onKeyDown={(event) => event.key === "Enter" && addTask()} placeholder="e.g. Sketch the new homepage" /></label><div className="modal-fields"><label>Status<select value={newStatus} onChange={(event) => setNewStatus(event.target.value as Status)}>{columns.map((column) => <option key={column.id} value={column.id}>{column.name}</option>)}</select></label><label>Priority<select value={newPriority} onChange={(event) => setNewPriority(event.target.value as Priority)}><option>High</option><option>Medium</option><option>Low</option></select></label></div><div className="modal-actions"><button className="cancel-button" onClick={() => setShowModal(false)}>Cancel</button><button className="add-button" onClick={addTask}><Plus size={17} /> Create task</button></div></div></div>}
 
       {showShareModal && <div className="modal-backdrop" onMouseDown={() => setShowShareModal(false)}><div className="modal" onMouseDown={(event) => event.stopPropagation()}><div className="modal-header"><div><span className="eyebrow">SHARE PROJECT</span><h2>{selectedProject}</h2></div><button className="close-button" onClick={() => setShowShareModal(false)} aria-label="Close"><X size={18} /></button></div><label>Invite by link<div className="share-link-row"><input readOnly value={`https://northstar.app/projects/${encodeURIComponent(selectedProject)}`} /><button className="add-button" onClick={copyProjectLink}>{linkCopied ? "Copied!" : "Copy link"}</button></div></label><div className="share-people">{activeTeam.people.map((person) => <div className="share-person-row" key={person.name}><div className={`avatar avatar-${person.color}`}>{person.initials}</div><div><strong>{person.name}</strong><small>{person.role}</small></div><span className="share-access">Can edit</span></div>)}</div><div className="modal-actions"><button className="cancel-button" onClick={() => setShowShareModal(false)}>Done</button></div></div></div>}
+
+      {infoModal && <div className="modal-backdrop" onMouseDown={() => setInfoModal(null)}><div className="modal" role="dialog" aria-modal="true" aria-labelledby="info-modal-title" ref={infoModalRef} tabIndex={-1} onMouseDown={(event) => event.stopPropagation()}><div className="modal-header"><div><span className="eyebrow">{infoModal === "about" ? "ABOUT NORTHSTAR" : "CONTACT US"}</span><h2 id="info-modal-title">{infoModal === "about" ? "About Northstar" : "Get in touch"}</h2></div><button className="close-button" onClick={() => setInfoModal(null)} aria-label="Close"><X size={18} /></button></div>{infoModal === "about" ? <div className="profile-modal-body"><div><strong>Northstar keeps teams aligned on projects, tasks, and people.</strong><p>Use the board, inbox, and people views to stay on top of your work in one place.</p></div></div> : <div className="profile-modal-body"><div><strong>Need help from the Northstar team?</strong><p>Email support@northstar.app and include your workspace name so we can follow up quickly.</p></div></div>}<div className="modal-actions"><button className="cancel-button" onClick={() => setInfoModal(null)}>Close</button></div></div></div>}
 
       {viewingPerson && <div className="modal-backdrop" onMouseDown={() => setViewingPerson(null)}><div className="modal" onMouseDown={(event) => event.stopPropagation()}><div className="modal-header"><div><span className="eyebrow">TEAM MEMBER</span><h2>{viewingPerson.name}</h2></div><button className="close-button" onClick={() => setViewingPerson(null)} aria-label="Close"><X size={18} /></button></div><div className="profile-modal-body"><div className={`avatar avatar-${viewingPerson.color} person-avatar`}>{viewingPerson.initials}</div><div><strong>{viewingPerson.role}</strong><p>Projects: {activeTeam.projects.join(", ")}</p></div></div><div className="modal-actions"><button className="cancel-button" onClick={() => setViewingPerson(null)}>Close</button></div></div></div>}
     </main>
