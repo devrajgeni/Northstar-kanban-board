@@ -196,14 +196,15 @@ describe("Project management", () => {
     expect(screen.getByDisplayValue("New project 2")).toBeInTheDocument();
   });
 
-  test("renames a project from its options menu", () => {
+  test("edits a project name and description from its options menu", () => {
     render(<Page />);
     fireEvent.click(screen.getByLabelText("Options for Website refresh"));
-    fireEvent.click(screen.getByRole("button", { name: "Rename" }));
-    const renameInput = screen.getByDisplayValue("Website refresh");
-    fireEvent.change(renameInput, { target: { value: "Marketing site" } });
-    fireEvent.blur(renameInput);
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.change(screen.getByDisplayValue("Website refresh"), { target: { value: "Marketing site" } });
+    fireEvent.change(screen.getByDisplayValue("Make the product feel as thoughtful as the people behind it."), { target: { value: "A clearer home for our marketing work." } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     expect(screen.getByText("Marketing site", { selector: ".project-row button" })).toBeInTheDocument();
+    expect(screen.getByText("A clearer home for our marketing work.")).toBeInTheDocument();
   });
 
   test("deletes a project from its options menu", () => {
