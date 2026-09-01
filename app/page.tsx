@@ -133,6 +133,7 @@ const FONTS: BoardFont[] = [
 
 export default function Home() {
   const [tasks, setTasks] = useState(initialTasks);
+  const [hasLoadedPersistedTasks, setHasLoadedPersistedTasks] = useState(false);
   const [teams, setTeams] = useState<Team[]>([...teamData]);
   const [activeTeamIndex, setActiveTeamIndex] = useState(0);
   const activeTeam = teams[activeTeamIndex];
@@ -192,6 +193,45 @@ export default function Home() {
     if (savedTheme && THEMES.some((theme) => theme.id === savedTheme)) setThemeId(savedTheme);
     if (savedFont && FONTS.some((font) => font.id === savedFont)) setFontId(savedFont);
   }, []);
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    async function loadPersistedTasks() {
+      if (typeof fetch !== "function") {
+        setHasLoadedPersistedTasks(true);
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/board", { cache: "no-store" });
+        if (!response.ok) return;
+        const data = await response.json() as { tasks?: Task[] | null };
+        if (isCurrent && Array.isArray(data.tasks)) setTasks(data.tasks);
+      } catch {
+        // The seeded board remains available until a database is configured.
+      } finally {
+        if (isCurrent) setHasLoadedPersistedTasks(true);
+      }
+    }
+
+    void loadPersistedTasks();
+    return () => { isCurrent = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!hasLoadedPersistedTasks || typeof fetch !== "function") return;
+
+    const timeoutId = window.setTimeout(() => {
+      void fetch("/api/board", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tasks }),
+      });
+    }, 400);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [hasLoadedPersistedTasks, tasks]);
 
   useEffect(() => {
     const theme = THEMES.find((candidate) => candidate.id === themeId) ?? THEMES[0];

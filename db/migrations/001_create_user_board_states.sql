@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS user_board_states (
+  owner_key TEXT PRIMARY KEY,
+  tasks JSONB NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
