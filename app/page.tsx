@@ -319,10 +319,31 @@ export default function Home() {
     setActiveLabels([]);
   }
 
-  function invitePerson() {
+  async function invitePerson() {
     const email = inviteEmail.trim().toLowerCase();
     if (!/^\S+@\S+\.\S+$/.test(email)) {
       setInviteError("Enter a valid email address.");
+      return;
+    }
+
+    setInviteError("");
+    try {
+      const workspacesResponse = await fetch("/api/workspaces", { cache: "no-store" });
+      const workspaceData = await workspacesResponse.json() as { workspaces?: { id: string }[] };
+      const workspaceId = workspaceData.workspaces?.[0]?.id;
+      if (!workspacesResponse.ok || !workspaceId) throw new Error("Workspace is unavailable.");
+      const role = inviteRole === "Admin" ? "admin" : "member";
+      const response = await fetch(`/api/workspaces/${workspaceId}/invitations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, role }),
+      });
+      if (!response.ok) {
+        const data = await response.json() as { error?: string };
+        throw new Error(data.error ?? "Unable to send invitation email.");
+      }
+    } catch (error) {
+      setInviteError(error instanceof Error ? error.message : "Unable to send invitation email.");
       return;
     }
 
@@ -340,10 +361,6 @@ export default function Home() {
     setInviteEmail("");
     setInviteRole("Team member");
     setInviteError("");
-
-    const subject = encodeURIComponent(`You're invited to ${activeTeam.name} on Northstar`);
-    const body = encodeURIComponent(`Hi,\n\nMina Patel invited you to join the ${activeTeam.name} workspace on Northstar.\n\nOpen Northstar to collaborate with the team.`);
-    window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
   }
 
   function deleteTask(taskId: number) {

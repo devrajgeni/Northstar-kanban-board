@@ -106,3 +106,8 @@ export const createCommentSchema = z.object({
 });
 
 export const updateCommentSchema = createCommentSchema;
+
+export const createInvitationSchema = z.object({
+  email: z.string().trim().email().max(320),
+  role: z.enum(["admin", "member", "viewer"]),
+});

@@ -30,6 +30,17 @@ For a custom domain, change `NEXTAUTH_URL` to the custom HTTPS URL and redeploy.
 
 The Neon connection string and `NEXTAUTH_SECRET` are server-only secrets. Never prefix either value with `NEXT_PUBLIC_`.
 
+## 4. Configure invitation email
+
+The Invite people action sends mail through Resend. Create a Resend account, verify a sending domain, then add these server-only variables locally and to Vercel Production:
+
+```env
+RESEND_API_KEY=re_...
+EMAIL_FROM=Northstar <invitations@your-verified-domain.com>
+```
+
+Without both values, the invitation endpoint returns `EMAIL_NOT_CONFIGURED` and no invitation is sent.
+
 ## Current boundary
 
 This is a temporary persistence bridge, not the final multi-tenant schema. The next migration should normalize users, workspaces, memberships, projects, columns, tasks, assignees, and comments so several users can collaborate on the same board with server-enforced roles.
