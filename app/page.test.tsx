@@ -307,15 +307,15 @@ describe("Notifications panel", () => {
 });
 
 describe("Sidebar about and contact actions", () => {
-  test("opens profile settings with a permanent name and editable properties", () => {
+  test("opens an account menu with edit profile, change password, and sign out", () => {
     render(<Page />);
     fireEvent.click(screen.getByRole("button", { name: /Mina Patel Admin/i }));
-    expect(screen.getByRole("dialog", { name: "Profile settings" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Name")).toHaveAttribute("readonly");
-    fireEvent.change(screen.getByDisplayValue("mina.patel@northstar.app"), { target: { value: "mina@company.com" } });
-    fireEvent.change(screen.getByDisplayValue("Admin"), { target: { value: "Project manager" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
-    expect(screen.getByRole("button", { name: /Mina Patel Project manager/i })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Profile" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edit profile" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Change password" }));
+    expect(screen.getByLabelText("Current password")).toHaveAttribute("type", "password");
+    expect(screen.getByLabelText("New password")).toHaveAttribute("type", "password");
+    expect(screen.getByRole("button", { name: "Change password" })).toBeInTheDocument();
   });
 
   test("clicking About opens the Northstar info modal", () => {

@@ -60,3 +60,35 @@ export async function createAndSendInvitation(email: string, workspaceId: string
   `;
   return { kind: "created", invitationId: rows[0].id };
 }
+
+export async function acceptInvitationForUser(email: string, token: string) {
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const sql = getDatabase();
+  const rows = await sql`
+    WITH invitation AS (
+      SELECT workspace_invitations.id, workspace_invitations.workspace_id, workspace_invitations.role, users.id AS user_id
+      FROM workspace_invitations
+      INNER JOIN users ON users.email = ${email.trim().toLowerCase()}
+      WHERE workspace_invitations.token_hash = ${tokenHash}
+        AND workspace_invitations.email = ${email.trim().toLowerCase()}
+        AND workspace_invitations.accepted_at IS NULL
+        AND workspace_invitations.expires_at > NOW()
+      LIMIT 1
+    ), membership AS (
+      INSERT INTO workspace_memberships (workspace_id, user_id, role)
+      SELECT workspace_id, user_id, role FROM invitation
+      ON CONFLICT (workspace_id, user_id) DO UPDATE SET role = EXCLUDED.role
+      RETURNING workspace_id, user_id
+    ), accepted AS (
+      UPDATE workspace_invitations SET accepted_at = NOW()
+      WHERE id = (SELECT id FROM invitation)
+      RETURNING id, workspace_id
+    ), audit AS (
+      INSERT INTO audit_events (workspace_id, actor_user_id, event_type, entity_type, entity_id)
+      SELECT accepted.workspace_id, membership.user_id, 'workspace.invitation_accepted', 'workspace_invitation', accepted.id
+      FROM accepted CROSS JOIN membership
+    )
+    SELECT workspaces.id, workspaces.name FROM accepted INNER JOIN workspaces ON workspaces.id = accepted.workspace_id
+  ` as { id: string; name: string }[];
+  return rows[0] ? { kind: "accepted" as const, workspace: rows[0] } : { kind: "invalid" as const };
+}

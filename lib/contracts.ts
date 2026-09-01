@@ -111,3 +111,18 @@ export const createInvitationSchema = z.object({
   email: z.string().trim().email().max(320),
   role: z.enum(["admin", "member", "viewer"]),
 });
+
+export const updateProfileSchema = z.object({
+  displayName: z.string().trim().min(1).max(160),
+});
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1).max(1024),
+  nextPassword: z.string().min(12).max(1024),
+}).refine(({ currentPassword, nextPassword }) => currentPassword !== nextPassword, {
+  message: "The new password must be different.",
+});
+
+export const acceptInvitationSchema = z.object({
+  token: z.string().min(32).max(256),
+});

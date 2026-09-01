@@ -1,6 +1,7 @@
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
-import argon2 from "argon2";
+import { randomBytes, scrypt as scryptCallback } from "node:crypto";
+import { promisify } from "node:util";
 import { neon } from "@neondatabase/serverless";
 
 if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not configured.");
@@ -15,7 +16,9 @@ if (!/^\S+@\S+\.\S+$/.test(email) || !displayName || password.length < 12) {
   throw new Error("Use a valid email and display name; password must be at least 12 characters.");
 }
 
-const passwordHash = await argon2.hash(password, { type: argon2.argon2id, memoryCost: 19_456, timeCost: 2, parallelism: 1 });
+const salt = randomBytes(16);
+const derivedKey = await promisify(scryptCallback)(password, salt, 64, { N: 32_768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 });
+const passwordHash = `scrypt$32768$8$1$${salt.toString("base64url")}$${derivedKey.toString("base64url")}`;
 const sql = neon(process.env.DATABASE_URL);
 await sql`
   INSERT INTO users (email, display_name, password_hash, password_changed_at)

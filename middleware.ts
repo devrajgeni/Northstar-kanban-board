@@ -6,5 +6,5 @@ export default withAuth({
 
 // Protect every route except the login page, the NextAuth API, and static assets.
 export const config = {
-  matcher: ["/((?!login|api/auth|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!login|invitations/accept|api/auth|_next/static|_next/image|favicon.ico).*)"],
 };

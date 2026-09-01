@@ -163,6 +163,13 @@ export default function Home() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileEmail, setProfileEmail] = useState("mina.patel@northstar.app");
   const [profileRole, setProfileRole] = useState("Admin");
+  const [profilePanel, setProfilePanel] = useState<"menu" | "edit" | "password">("menu");
+  const [profileName, setProfileName] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [nextPassword, setNextPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [profileError, setProfileError] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -218,6 +225,20 @@ export default function Home() {
     void loadPersistedTasks();
     return () => { isCurrent = false; };
   }, []);
+
+  useEffect(() => {
+    if (!showProfileModal || typeof fetch !== "function") return;
+    setProfilePanel("menu");
+    setProfileError("");
+    void fetch("/api/me", { cache: "no-store" }).then(async (response) => {
+      if (!response.ok) return;
+      const data = await response.json() as { profile?: { email: string; displayName: string } };
+      if (data.profile) {
+        setProfileEmail(data.profile.email);
+        setProfileName(data.profile.displayName);
+      }
+    });
+  }, [showProfileModal]);
 
   useEffect(() => {
     if (!hasLoadedPersistedTasks || typeof fetch !== "function") return;
@@ -563,6 +584,28 @@ export default function Home() {
     setDraggedOverId(null);
   }
 
+  async function saveProfile() {
+    if (!profileName.trim()) { setProfileError("Enter your display name."); return; }
+    setProfileSaving(true);
+    setProfileError("");
+    try {
+      const response = await fetch("/api/me", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ displayName: profileName }) });
+      if (!response.ok) throw new Error((await response.json() as { error?: string }).error ?? "Unable to save profile.");
+      setProfilePanel("menu");
+    } catch (error) { setProfileError(error instanceof Error ? error.message : "Unable to save profile."); } finally { setProfileSaving(false); }
+  }
+
+  async function savePassword() {
+    if (nextPassword !== confirmPassword) { setProfileError("New passwords do not match."); return; }
+    setProfileSaving(true);
+    setProfileError("");
+    try {
+      const response = await fetch("/api/me/password", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ currentPassword, nextPassword }) });
+      if (!response.ok) throw new Error((await response.json() as { error?: string }).error ?? "Unable to change password.");
+      setCurrentPassword(""); setNextPassword(""); setConfirmPassword(""); setProfilePanel("menu");
+    } catch (error) { setProfileError(error instanceof Error ? error.message : "Unable to change password."); } finally { setProfileSaving(false); }
+  }
+
   return (
     <main className="app-shell">
       {selectedTask && <div className="modal-backdrop" onMouseDown={() => { setSelectedTaskId(null); setShowAssignees(false); setEditingCommentId(null); setIsEditingIssue(false); }}><div className="modal issue-modal" role="dialog" aria-modal="true" aria-labelledby="issue-modal-title" onMouseDown={(event) => event.stopPropagation()}><div className="modal-header"><div><span className="eyebrow">{selectedProject.toUpperCase()} / {selectedTask.status}</span>{isEditingIssue ? <input className="issue-title-input" aria-label="Issue title" value={issueDraft.title} onChange={(event) => setIssueDraft((current) => ({ ...current, title: event.target.value }))} /> : <h2 id="issue-modal-title">{selectedTask.title}</h2>}</div>{isEditingIssue ? <div className="issue-edit-actions"><button className="close-button" aria-label="Discard issue changes" onClick={() => setIsEditingIssue(false)}><X size={18} /></button><button className="add-button" onClick={saveIssueEdit}>Save</button></div> : <><button className="person-action" onClick={beginIssueEdit}>Edit issue</button><button className="close-button" onClick={() => { setSelectedTaskId(null); setShowAssignees(false); }} aria-label="Close"><X size={18} /></button></>}</div>{isEditingIssue ? <div className="issue-fields"><label>Description<textarea value={issueDraft.description} onChange={(event) => setIssueDraft((current) => ({ ...current, description: event.target.value }))} /></label><div className="modal-fields"><label>Priority<select value={issueDraft.priority} onChange={(event) => setIssueDraft((current) => ({ ...current, priority: event.target.value as Priority }))}><option>High</option><option>Medium</option><option>Low</option></select></label><label>Due date<input value={issueDraft.due} onChange={(event) => setIssueDraft((current) => ({ ...current, due: event.target.value }))} /></label></div></div> : <p className="issue-description">{selectedTask.description}</p>}<div className="issue-assignees"><div><strong>Assigned to</strong><div className="assignee-stack">{selectedTask.assignees.slice(0, 3).map((assignee) => <span className={`avatar avatar-${assignee.color}`} key={assignee.name}>{assignee.initials}</span>)}{selectedTask.assignees.length > 3 && <span className="assignee-overflow">+{selectedTask.assignees.length - 3}</span>}</div></div><button className="person-action" onClick={() => setShowAssignees((current) => !current)}>{showAssignees ? "Done" : "Manage people"}</button></div>{showAssignees && <div className="assignee-panel">{activeTeam.people.map((person) => { const assigned = selectedTask.assignees.some((assignee) => assignee.name === person.name); return <label key={person.name}><input type="checkbox" checked={assigned} onChange={() => toggleTaskAssignee(person)} /><span className={`avatar avatar-${person.color}`}>{person.initials}</span>{person.name}</label>; })}</div>}<div className="comments-section"><h3>Comments <span>{selectedTask.comments.length}</span></h3><div className="comments-list">{selectedTask.comments.map((comment) => <article className="comment" key={comment.id}><div className="avatar avatar-coral">{comment.author === "Mina Patel" ? "MP" : comment.author.split(" ").map((part) => part[0]).join("").slice(0, 2)}</div><div className="comment-content"><div><strong>{comment.author}</strong><time>{comment.date}</time>{comment.author === "Mina Patel" && editingCommentId !== comment.id && <button onClick={() => { setEditingCommentId(comment.id); setEditingCommentText(comment.text); }}>Edit</button>}</div>{editingCommentId === comment.id ? <div className="comment-edit"><input value={editingCommentText} onChange={(event) => setEditingCommentText(event.target.value)} /><button onClick={saveComment}>Save</button><button onClick={() => setEditingCommentId(null)}>Cancel</button></div> : <p>{comment.text}</p>}</div></article>)}</div><div className="comment-composer"><input value={newComment} onChange={(event) => setNewComment(event.target.value)} onKeyDown={(event) => event.key === "Enter" && addComment()} placeholder="Add a comment" /><button className="add-button" onClick={addComment}>Comment</button></div></div></div></div>}
@@ -635,8 +678,6 @@ export default function Home() {
 
       {showShareModal && <div className="modal-backdrop" onMouseDown={() => setShowShareModal(false)}><div className="modal" onMouseDown={(event) => event.stopPropagation()}><div className="modal-header"><div><span className="eyebrow">SHARE PROJECT</span><h2>{selectedProject}</h2></div><button className="close-button" onClick={() => setShowShareModal(false)} aria-label="Close"><X size={18} /></button></div><label>Invite by link<div className="share-link-row"><input readOnly value={`https://northstar.app/projects/${encodeURIComponent(selectedProject)}`} /><button className="add-button" onClick={copyProjectLink}>{linkCopied ? "Copied!" : "Copy link"}</button></div></label><div className="share-people">{activeTeam.people.map((person) => <div className="share-person-row" key={person.name}><div className={`avatar avatar-${person.color}`}>{person.initials}</div><div><strong>{person.name}</strong><small>{person.role}</small></div></div>)}</div><div className="modal-actions"><button className="cancel-button" onClick={() => setShowShareModal(false)}>Done</button></div></div></div>}
 
-      {showProfileModal && <div className="modal-backdrop" onMouseDown={() => setShowProfileModal(false)}><div className="modal" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title" onMouseDown={(event) => event.stopPropagation()}><div className="modal-header"><div><span className="eyebrow">YOUR PROFILE</span><h2 id="profile-modal-title">Profile settings</h2></div><button className="close-button" onClick={() => setShowProfileModal(false)} aria-label="Close"><X size={18} /></button></div><label>Name<input value="Mina Patel" readOnly aria-label="Name" /></label><label className="invite-role-label">Email address<input type="email" value={profileEmail} onChange={(event) => setProfileEmail(event.target.value)} /></label><label className="invite-role-label">Workspace role<select value={profileRole} onChange={(event) => setProfileRole(event.target.value)}><option>Admin</option><option>Project manager</option><option>Team member</option></select></label><div className="modal-actions"><button className="cancel-button signout-button" onClick={() => signOut({ callbackUrl: "/login" })}>Sign out</button><button className="cancel-button" onClick={() => setShowProfileModal(false)}>Cancel</button><button className="add-button" onClick={() => setShowProfileModal(false)}>Save changes</button></div></div></div>}
-
       {infoModal && <div className="modal-backdrop" onMouseDown={() => setInfoModal(null)}><div className="modal" role="dialog" aria-modal="true" aria-labelledby="info-modal-title" ref={infoModalRef} tabIndex={-1} onMouseDown={(event) => event.stopPropagation()}><div className="modal-header"><div><span className="eyebrow">{infoModal === "about" ? "ABOUT NORTHSTAR" : "CONTACT US"}</span><h2 id="info-modal-title">{infoModal === "about" ? "About Northstar" : "Get in touch"}</h2></div><button className="close-button" onClick={() => setInfoModal(null)} aria-label="Close"><X size={18} /></button></div>{infoModal === "about" ? <div className="profile-modal-body"><div><strong>Northstar keeps teams aligned on projects, tasks, and people.</strong><p>Use the board, inbox, and people views to stay on top of your work in one place.</p></div></div> : <div className="profile-modal-body"><div><strong>Need help from the Northstar team?</strong><p>Email support@northstar.app and include your workspace name so we can follow up quickly.</p></div></div>}<div className="modal-actions"><button className="cancel-button" onClick={() => setInfoModal(null)}>Close</button></div></div></div>}
 
       {showSettingsModal && <div className="modal-backdrop" onMouseDown={() => setShowSettingsModal(false)}><div className="modal settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title" onMouseDown={(event) => event.stopPropagation()}><div className="modal-header"><div><span className="eyebrow">WORKSPACE SETTINGS</span><h2 id="settings-modal-title">Appearance</h2></div><button className="close-button" onClick={() => setShowSettingsModal(false)} aria-label="Close"><X size={18} /></button></div>
@@ -666,6 +707,7 @@ export default function Home() {
       </div></div>}
 
       {viewingPerson && <div className="modal-backdrop" onMouseDown={() => setViewingPerson(null)}><div className="modal" onMouseDown={(event) => event.stopPropagation()}><div className="modal-header"><div><span className="eyebrow">TEAM MEMBER</span><h2>{viewingPerson.name}</h2></div><button className="close-button" onClick={() => setViewingPerson(null)} aria-label="Close"><X size={18} /></button></div><div className="profile-modal-body"><div className={`avatar avatar-${viewingPerson.color} person-avatar`}>{viewingPerson.initials}</div><div><strong>{viewingPerson.role}</strong><p>Projects: {activeTeam.projects.join(", ")}</p></div></div><div className="modal-actions"><button className="cancel-button" onClick={() => setViewingPerson(null)}>Close</button></div></div></div>}
+      {showProfileModal && <div className="modal-backdrop" onMouseDown={() => setShowProfileModal(false)}><div className="modal" role="dialog" aria-modal="true" aria-labelledby="account-menu-title" onMouseDown={(event) => event.stopPropagation()}><div className="modal-header"><div><span className="eyebrow">YOUR ACCOUNT</span><h2 id="account-menu-title">{profilePanel === "menu" ? "Profile" : profilePanel === "edit" ? "Edit profile" : "Change password"}</h2></div><button className="close-button" onClick={() => setShowProfileModal(false)} aria-label="Close"><X size={18} /></button></div>{profilePanel === "menu" ? <div className="modal-actions"><button className="person-action" onClick={() => setProfilePanel("edit")}>Edit profile</button><button className="person-action" onClick={() => setProfilePanel("password")}>Change password</button><button className="cancel-button signout-button" onClick={() => signOut({ callbackUrl: "/login" })}>Sign out</button></div> : profilePanel === "edit" ? <><label>Name<input autoFocus value={profileName} onChange={(event) => setProfileName(event.target.value)} /></label><label>Email address<input value={profileEmail} readOnly /></label>{profileError && <p className="form-error" role="alert">{profileError}</p>}<div className="modal-actions"><button className="cancel-button" onClick={() => setProfilePanel("menu")}>Back</button><button className="add-button" disabled={profileSaving} onClick={saveProfile}>{profileSaving ? "Saving..." : "Save profile"}</button></div></> : <><label>Current password<input autoFocus type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} /></label><label>New password<input type="password" autoComplete="new-password" value={nextPassword} onChange={(event) => setNextPassword(event.target.value)} /></label><label>Confirm new password<input type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} /></label>{profileError && <p className="form-error" role="alert">{profileError}</p>}<div className="modal-actions"><button className="cancel-button" onClick={() => setProfilePanel("menu")}>Back</button><button className="add-button" disabled={profileSaving} onClick={savePassword}>{profileSaving ? "Changing..." : "Change password"}</button></div></>}</div></div>}
     </main>
   );
 }

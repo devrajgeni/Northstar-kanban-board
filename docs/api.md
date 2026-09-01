@@ -52,3 +52,11 @@ Errors:
 | `PATCH /api/comments/{commentId}` | `updateCommentSchema` | comment author, admin, owner |
 
 All future task and comment mutations must enforce workspace membership before reading or writing the target record.
+
+## Profile Endpoints
+
+`GET /api/me` returns the current user's email and display name. `PATCH /api/me` accepts `{ "displayName": string }`. `PUT /api/me/password` accepts the current password and a new password of at least 12 characters; it verifies the current salted scrypt hash before replacing it.
+
+## Invitation Acceptance
+
+`POST /api/invitations/accept` accepts `{ "token": string }`. The caller must be signed in using the exact invited email address. Valid invitations add or update the workspace membership, are marked accepted, and cannot be reused.

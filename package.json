@@ -8,11 +8,12 @@
     "start": "next start",
     "test": "jest",
     "db:migrate": "node --env-file=.env.local scripts/migrate-neon.mjs",
-    "user:create": "node --env-file=.env.local scripts/create-user.mjs"
+    "user:create": "node --env-file=.env.local scripts/create-user.mjs",
+    "workspace:bootstrap": "node --env-file=.env.local scripts/bootstrap-workspace.mjs",
+    "user:verify": "node --env-file=.env.local scripts/verify-user-login.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
-    "argon2": "^0.45.1",
     "lucide-react": "^0.468.0",
     "next": "^14.2.15",
     "next-auth": "^4.24.15",
